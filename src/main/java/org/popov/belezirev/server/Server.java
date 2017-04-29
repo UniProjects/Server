@@ -1,22 +1,23 @@
 package org.popov.belezirev.server;
 
 import java.io.IOException;
-import java.io.OutputStream;
+import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Scanner;
 
 public class Server implements AutoCloseable {
+	private static final boolean SERVER_IS_RUNNING = true;
 	public static final int SERVER_PORT = 10513;
 	private ServerSocket serverSocket;
 	private List<ClientConnectionThread> clients;
-	private List<OutputStream> writers;
+	private List<PrintWriter> writers;
 
 	public Server(int serverPort) {
-		clients = new LinkedList<ClientConnectionThread>();
-		writers = new ArrayList<>();
+		clients = new LinkedList<>();
+		writers = new LinkedList<>();
 		serverInit(serverPort);
 	}
 
@@ -31,13 +32,18 @@ public class Server implements AutoCloseable {
 	}
 
 	public void start() throws Exception {
-		while (true) {
+		new Thread(() -> {
+			try (Scanner commandsInputter = new Scanner(System.in)) {
+				// COMMANDS LOGIC GOES HERE
+			}
+		}).start();
+
+		while (SERVER_IS_RUNNING) {
 			Socket clientSocket = serverSocket.accept();
-			writers.add(clientSocket.getOutputStream());
+			writers.add(new PrintWriter(clientSocket.getOutputStream()));
 			ClientConnectionThread clientConnectionThread = new ClientConnectionThread(clientSocket, writers);
 			clients.add(clientConnectionThread);
 			System.out.println("Client connected to the server!");
-			// clientConnectionThread.setDaemon(true);
 			clientConnectionThread.start();
 		}
 	}
@@ -49,6 +55,9 @@ public class Server implements AutoCloseable {
 		}
 		for (ClientConnectionThread clientConnectionThread : clients) {
 			clientConnectionThread.stopClientThread();
+		}
+		for (PrintWriter writer : writers) {
+			writer.close();
 		}
 		clients.clear();
 	}
