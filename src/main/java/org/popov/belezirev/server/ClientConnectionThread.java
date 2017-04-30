@@ -6,16 +6,17 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.util.List;
+import java.util.function.Supplier;
 
 public class ClientConnectionThread extends Thread {
 	private Socket clientSocket;
 	private volatile boolean isServerRunning;
-	private List<PrintWriter> writers;
+    private Supplier<List<PrintWriter>> clientsSupplier;
 
-	public ClientConnectionThread(Socket socket, List<PrintWriter> writers) {
+    public ClientConnectionThread(Socket socket, Supplier<List<PrintWriter>> clientsSupplier) {
 		this.clientSocket = socket;
-		this.writers = writers;
 		isServerRunning = true;
+        this.clientsSupplier = clientsSupplier;
 	}
 
 	@Override
@@ -26,7 +27,6 @@ public class ClientConnectionThread extends Thread {
 				String msg = reader.readLine();
 				if (msg != null) {
 					broadcast(msg);
-
 				}
 			}
 		} catch (IOException e) {
@@ -35,14 +35,14 @@ public class ClientConnectionThread extends Thread {
 	}
 
 	private void broadcast(String msg) {
-		writers.stream().forEach(writer -> {
-			writer.write("PUTKAAA: " + msg + "\n");
-			writer.flush();
+        for (PrintWriter clientWriter : clientsSupplier.get()) {
+            clientWriter.write(msg + "\n");
+            clientWriter.flush();
+        }
 
-		});
 	}
 
-	public void stopClientThread() {
+    public void stopClientThread() {
 		isServerRunning = false;
 		if (clientSocket != null) {
 			try {

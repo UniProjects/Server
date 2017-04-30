@@ -7,6 +7,7 @@ import java.net.Socket;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Scanner;
+import java.util.function.Supplier;
 
 public class Server implements AutoCloseable {
 	private static final boolean SERVER_IS_RUNNING = true;
@@ -14,6 +15,7 @@ public class Server implements AutoCloseable {
 	private ServerSocket serverSocket;
 	private List<ClientConnectionThread> clients;
 	private List<PrintWriter> writers;
+    private Supplier<List<PrintWriter>> clientsSupplier = () -> writers;
 
 	public Server(int serverPort) {
 		clients = new LinkedList<>();
@@ -41,7 +43,7 @@ public class Server implements AutoCloseable {
 		while (SERVER_IS_RUNNING) {
 			Socket clientSocket = serverSocket.accept();
 			writers.add(new PrintWriter(clientSocket.getOutputStream()));
-			ClientConnectionThread clientConnectionThread = new ClientConnectionThread(clientSocket, writers);
+            ClientConnectionThread clientConnectionThread = new ClientConnectionThread(clientSocket, clientsSupplier);
 			clients.add(clientConnectionThread);
 			System.out.println("Client connected to the server!");
 			clientConnectionThread.start();
