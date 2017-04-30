@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
+import java.text.MessageFormat;
 import java.util.List;
 import java.util.function.Supplier;
 
@@ -12,11 +13,13 @@ public class ClientConnectionThread extends Thread {
 	private Socket clientSocket;
 	private volatile boolean isServerRunning;
     private Supplier<List<PrintWriter>> clientsSupplier;
+    private String clientUserName;
 
-    public ClientConnectionThread(Socket socket, Supplier<List<PrintWriter>> clientsSupplier) {
+    public ClientConnectionThread(Socket socket, String clientUserName, Supplier<List<PrintWriter>> clientsSupplier) {
 		this.clientSocket = socket;
 		isServerRunning = true;
         this.clientsSupplier = clientsSupplier;
+        this.clientUserName = clientUserName;
 	}
 
 	@Override
@@ -36,7 +39,7 @@ public class ClientConnectionThread extends Thread {
 
 	private void broadcast(String msg) {
         for (PrintWriter clientWriter : clientsSupplier.get()) {
-            clientWriter.write(msg + "\n");
+            clientWriter.write(MessageFormat.format("{0} says: {1}\n", clientUserName, msg));
             clientWriter.flush();
         }
 
