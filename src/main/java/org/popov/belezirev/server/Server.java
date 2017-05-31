@@ -7,15 +7,18 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Scanner;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 import org.popov.belezirev.server.CLI.Command;
 import org.popov.belezirev.server.CLI.CommandManager;
 
 public class Server implements AutoCloseable {
+	private static final String GUI_CLIENT_TYPE = "gui";
 	public static final int SERVER_PORT = 10513;
 	private static final boolean SERVER_IS_RUNNING = true;
 	private ServerSocket serverSocket;
@@ -26,7 +29,7 @@ public class Server implements AutoCloseable {
 
 	public Server(int serverPort) {
 		clients = new LinkedList<>();
-		writers = new LinkedList<>();
+		writers = Collections.synchronizedList(new LinkedList<>());
 		serverInit(serverPort);
 	}
 
@@ -59,33 +62,45 @@ public class Server implements AutoCloseable {
 
 		while (SERVER_IS_RUNNING) {
 			Socket clientSocket = serverSocket.accept();
-			writers.add(new PrintWriter(clientSocket.getOutputStream()));
-			String clientUserName = readClientUserName(clientSocket);
+			PrintWriter clientWriter = new PrintWriter(clientSocket.getOutputStream());
+			writers.add(clientWriter);
+			BufferedReader clientReader = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+			String clientUserName = readInitialMessageFromClient(clientReader);
+			String clientType = readInitialMessageFromClient(clientReader);
 			ClientConnectionThread clientConnectionThread = new ClientConnectionThread(clientSocket, clientUserName,
 					clientsSupplier);
 			clients.add(clientConnectionThread);
+			if (GUI_CLIENT_TYPE.equals(clientType)) {
+				sendAllUserNames(clientWriter);
+			}
 			System.out.println("Client connected to the server!");
 			clientConnectionThread.start();
 		}
 	}
 
-	private String readClientUserName(Socket clientSocket) throws IOException {
-		BufferedReader reader = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+	private void sendAllUserNames(PrintWriter clientWriter) {
+		clientWriter
+				.println(clients.stream().map(client -> client.getClientUserName()).collect(Collectors.joining(",")));
+		clientWriter.flush();
+	}
+
+	private String readInitialMessageFromClient(BufferedReader reader) throws IOException {
 		return reader.readLine();
 	}
 
 	@Override
 	public void close() {
-		if (serverSocket != null) {
-			closeQuietly(serverSocket);
-		}
 		for (ClientConnectionThread clientConnectionThread : clients) {
 			clientConnectionThread.stopClientThread();
 		}
 		for (PrintWriter writer : writers) {
-			writer.close();
+			if (writer != null) {
+				writer.close();
+			}
 		}
-		clients.clear();
+		if (serverSocket != null) {
+			closeQuietly(serverSocket);
+		}
 	}
 
 	private void closeQuietly(Closeable closable) {

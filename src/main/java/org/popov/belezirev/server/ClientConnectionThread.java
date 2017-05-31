@@ -12,14 +12,14 @@ import java.util.function.Supplier;
 public class ClientConnectionThread extends Thread {
 	private Socket clientSocket;
 	private volatile boolean isServerRunning;
-    private Supplier<List<PrintWriter>> clientsSupplier;
-    private String clientUserName;
+	private Supplier<List<PrintWriter>> clientsSupplier;
+	private String clientUserName;
 
-    public ClientConnectionThread(Socket socket, String clientUserName, Supplier<List<PrintWriter>> clientsSupplier) {
+	public ClientConnectionThread(Socket socket, String clientUserName, Supplier<List<PrintWriter>> clientsSupplier) {
 		this.clientSocket = socket;
 		isServerRunning = true;
-        this.clientsSupplier = clientsSupplier;
-        this.clientUserName = clientUserName;
+		this.clientsSupplier = clientsSupplier;
+		this.clientUserName = clientUserName;
 	}
 
 	@Override
@@ -38,14 +38,14 @@ public class ClientConnectionThread extends Thread {
 	}
 
 	private void broadcast(String msg) {
-        for (PrintWriter clientWriter : clientsSupplier.get()) {
-            clientWriter.write(MessageFormat.format("{0} says: {1}\n", clientUserName, msg));
-            clientWriter.flush();
-        }
+		for (PrintWriter clientWriter : clientsSupplier.get()) {
+			clientWriter.write(MessageFormat.format("{0} says: {1}\n", clientUserName, msg));
+			clientWriter.flush();
+		}
 
 	}
 
-    public void stopClientThread() {
+	public void stopClientThread() {
 		isServerRunning = false;
 		if (clientSocket != null) {
 			try {
@@ -54,6 +54,14 @@ public class ClientConnectionThread extends Thread {
 				e.printStackTrace();
 			}
 		}
+	}
+
+	public Socket getClientSocket() {
+		return clientSocket;
+	}
+
+	public String getClientUserName() {
+		return clientUserName;
 	}
 
 }
