@@ -18,6 +18,7 @@ import org.popov.belezirev.server.CLI.Command;
 import org.popov.belezirev.server.CLI.CommandManager;
 
 public class Server implements AutoCloseable {
+	private static final String VALID_USERNAME_RESPONSE = "valid_username";
 	private static final String GUI_CLIENT_TYPE = "gui";
 	public static final int SERVER_PORT = 10513;
 	private static final boolean SERVER_IS_RUNNING = true;
@@ -63,19 +64,37 @@ public class Server implements AutoCloseable {
 		while (SERVER_IS_RUNNING) {
 			Socket clientSocket = serverSocket.accept();
 			PrintWriter clientWriter = new PrintWriter(clientSocket.getOutputStream());
-			writers.add(clientWriter);
 			BufferedReader clientReader = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
 			String clientUserName = readInitialMessageFromClient(clientReader);
-			String clientType = readInitialMessageFromClient(clientReader);
-			ClientConnectionThread clientConnectionThread = new ClientConnectionThread(clientSocket, clientUserName,
-					clientsSupplier);
-			clients.add(clientConnectionThread);
-			if (GUI_CLIENT_TYPE.equals(clientType)) {
-				sendAllUserNames(clientWriter);
+			if (isUsernameAvailable(clientUserName)) {
+				sendUsernameConfirmationResponse(clientWriter);
+				writers.add(clientWriter);
+				String clientPassword = readInitialMessageFromClient(clientReader);
+				String clientType = readInitialMessageFromClient(clientReader);
+				ClientConnectionThread clientConnectionThread = new ClientConnectionThread(clientSocket, clientUserName,
+						clientPassword, clientsSupplier);
+				clients.add(clientConnectionThread);
+				if (GUI_CLIENT_TYPE.equals(clientType)) {
+					sendAllUserNames(clientWriter);
+				}
+				System.out.println("Client connected to the server!");
+				clientConnectionThread.start();
 			}
-			System.out.println("Client connected to the server!");
-			clientConnectionThread.start();
 		}
+	}
+
+	private void sendUsernameConfirmationResponse(PrintWriter clientWriter) {
+		clientWriter.println(VALID_USERNAME_RESPONSE);
+		clientWriter.flush();
+	}
+
+	private Boolean isUsernameAvailable(final String username) {
+		for (ClientConnectionThread client : clients) {
+			if (client.getClientUserName().equals(username)) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	private void sendAllUserNames(PrintWriter clientWriter) {

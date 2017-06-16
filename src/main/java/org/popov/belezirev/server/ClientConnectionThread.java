@@ -14,12 +14,16 @@ public class ClientConnectionThread extends Thread {
 	private volatile boolean isServerRunning;
 	private Supplier<List<PrintWriter>> clientsSupplier;
 	private String clientUserName;
+	private String clientPassword;
 
-	public ClientConnectionThread(Socket socket, String clientUserName, Supplier<List<PrintWriter>> clientsSupplier) {
+	public ClientConnectionThread(Socket socket, String clientUserName, String clientPassword,
+			Supplier<List<PrintWriter>> clientsSupplier) {
 		this.clientSocket = socket;
+		this.clientPassword = clientPassword;
 		isServerRunning = true;
 		this.clientsSupplier = clientsSupplier;
 		this.clientUserName = clientUserName;
+		this.clientPassword = clientPassword;
 	}
 
 	@Override
