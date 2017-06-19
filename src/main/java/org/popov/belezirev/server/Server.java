@@ -16,6 +16,7 @@ import java.util.stream.Collectors;
 
 import org.popov.belezirev.server.CLI.Command;
 import org.popov.belezirev.server.CLI.CommandManager;
+import org.popov.belezirev.server.security.PasswordHasher;
 
 public class Server implements AutoCloseable {
 	private static final String VALID_USERNAME_RESPONSE = "valid_username";
@@ -27,6 +28,7 @@ public class Server implements AutoCloseable {
 	private List<PrintWriter> writers;
 	private Supplier<List<PrintWriter>> clientsSupplier = () -> writers;
 	private Command command;
+	private PasswordHasher passwordHasher;
 
 	public Server(int serverPort) {
 		clients = new LinkedList<>();
@@ -67,12 +69,12 @@ public class Server implements AutoCloseable {
 			BufferedReader clientReader = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
 			String clientUserName = readInitialMessageFromClient(clientReader);
 			if (isUsernameAvailable(clientUserName)) {
-				sendUsernameConfirmationResponse(clientWriter);
 				writers.add(clientWriter);
+				sendUsernameConfirmationResponse(clientWriter);
 				String clientPassword = readInitialMessageFromClient(clientReader);
 				String clientType = readInitialMessageFromClient(clientReader);
 				ClientConnectionThread clientConnectionThread = new ClientConnectionThread(clientSocket, clientUserName,
-						clientPassword, clientsSupplier);
+						passwordHasher.MD5Hash(clientPassword), clientsSupplier);
 				clients.add(clientConnectionThread);
 				if (GUI_CLIENT_TYPE.equals(clientType)) {
 					sendAllUserNames(clientWriter);
