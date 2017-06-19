@@ -29,11 +29,14 @@ public class Server implements AutoCloseable {
 	private Supplier<List<PrintWriter>> clientsSupplier = () -> writers;
 	private Command command;
 	private PasswordHasher passwordHasher;
+	private ClientGSONSerializator clientGSONSerializator;
 
 	public Server(int serverPort) {
 		clients = new LinkedList<>();
 		writers = Collections.synchronizedList(new LinkedList<>());
 		serverInit(serverPort);
+		passwordHasher = new PasswordHasher();
+		clientGSONSerializator = new ClientGSONSerializator();
 	}
 
 	private void serverInit(int serverPort) {
@@ -75,6 +78,7 @@ public class Server implements AutoCloseable {
 				String clientType = readInitialMessageFromClient(clientReader);
 				ClientConnectionThread clientConnectionThread = new ClientConnectionThread(clientSocket, clientUserName,
 						passwordHasher.MD5Hash(clientPassword), clientsSupplier);
+				clientGSONSerializator.serializeFile(System.getProperty("user.dir"), clientConnectionThread);
 				clients.add(clientConnectionThread);
 				if (GUI_CLIENT_TYPE.equals(clientType)) {
 					sendAllUserNames(clientWriter);

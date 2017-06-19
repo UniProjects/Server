@@ -10,9 +10,9 @@ import java.util.List;
 import java.util.function.Supplier;
 
 public class ClientConnectionThread extends Thread {
-	private Socket clientSocket;
-	private volatile boolean isServerRunning;
-	private Supplier<List<PrintWriter>> clientsSupplier;
+	private transient Socket clientSocket;
+	private transient volatile boolean isServerRunning;
+	private transient Supplier<List<PrintWriter>> clientsSupplier;
 	private String clientUserName;
 	private String clientPassword;
 
