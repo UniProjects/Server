@@ -3,25 +3,46 @@ package org.popov.belezirev.server;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
+import com.google.gson.ExclusionStrategy;
+import com.google.gson.FieldAttributes;
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.annotations.Expose;
 
 public class ClientGSONSerializator {
 	private static final boolean APPEND = true;
 	private Gson gson;
 
 	public ClientGSONSerializator() {
-		gson = new Gson();
+		gson = new GsonBuilder().addSerializationExclusionStrategy(new ExclusionStrategy() {
+
+			@Override
+			public boolean shouldSkipField(FieldAttributes f) {
+				return f.getAnnotation(Expose.class) == null;
+			}
+
+			@Override
+			public boolean shouldSkipClass(Class<?> clazz) {
+				return false;
+			}
+		}).setPrettyPrinting().create();
 	}
 
-	public void serializeFile(String filepath, ClientConnectionThread client) {
+	public void serializeFile(Path filepath, ClientConnectionThread client) throws IOException {
 		String clientGSONData = gson.toJson(client);
-		try (BufferedWriter writer = new BufferedWriter(new FileWriter(filepath + "\\clientsData.json", APPEND))) {
+		if (!Files.exists(filepath)) {
+			Files.createFile(filepath);
+		}
+		try (BufferedWriter writer = new BufferedWriter(new FileWriter(filepath.toString(), APPEND))) {
 			writer.write(clientGSONData);
 			writer.flush();
-		} catch (IOException ioException) {
-			// TODO: handle exception
+		} catch (IOException e) {
+			e.printStackTrace();
 		}
 
 	}
+
 }

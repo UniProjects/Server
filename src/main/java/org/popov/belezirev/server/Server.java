@@ -7,18 +7,19 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Scanner;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-import org.popov.belezirev.server.CLI.Command;
-import org.popov.belezirev.server.CLI.CommandManager;
-import org.popov.belezirev.server.security.PasswordHasher;
+import org.apache.commons.codec.digest.DigestUtils;
 
 public class Server implements AutoCloseable {
+	private static final Path USERS_FILE_LOCATION = Paths.get(System.getProperty("user.home"), "users.json");
 	private static final String VALID_USERNAME_RESPONSE = "valid_username";
 	private static final String GUI_CLIENT_TYPE = "gui";
 	public static final int SERVER_PORT = 10513;
@@ -27,15 +28,12 @@ public class Server implements AutoCloseable {
 	private List<ClientConnectionThread> clients;
 	private List<PrintWriter> writers;
 	private Supplier<List<PrintWriter>> clientsSupplier = () -> writers;
-	private Command command;
-	private PasswordHasher passwordHasher;
 	private ClientGSONSerializator clientGSONSerializator;
 
 	public Server(int serverPort) {
 		clients = new LinkedList<>();
 		writers = Collections.synchronizedList(new LinkedList<>());
 		serverInit(serverPort);
-		passwordHasher = new PasswordHasher();
 		clientGSONSerializator = new ClientGSONSerializator();
 	}
 
@@ -50,21 +48,6 @@ public class Server implements AutoCloseable {
 	}
 
 	public void start() throws Exception {
-		new Thread(() -> {
-			try (Scanner commandLineReader = new Scanner(System.in)) {
-				String commandString = null;
-				while (SERVER_IS_RUNNING) {
-					commandString = commandLineReader.nextLine();
-					try {
-						command = CommandManager.createCommand(commandString, clients);
-					} catch (Exception exception) {
-						// TODO Auto-generated catch block
-						exception.printStackTrace();
-					}
-					command.execute();
-				}
-			}
-		}).start();
 
 		while (SERVER_IS_RUNNING) {
 			Socket clientSocket = serverSocket.accept();
@@ -77,20 +60,27 @@ public class Server implements AutoCloseable {
 				String clientPassword = readInitialMessageFromClient(clientReader);
 				String clientType = readInitialMessageFromClient(clientReader);
 				ClientConnectionThread clientConnectionThread = new ClientConnectionThread(clientSocket, clientUserName,
-						passwordHasher.MD5Hash(clientPassword), clientsSupplier);
-				clientGSONSerializator.serializeFile(System.getProperty("user.dir"), clientConnectionThread);
+						DigestUtils.md5Hex(clientPassword), clientsSupplier);
+				clientGSONSerializator.serializeFile(USERS_FILE_LOCATION, clientConnectionThread);
 				clients.add(clientConnectionThread);
 				if (GUI_CLIENT_TYPE.equals(clientType)) {
 					sendAllUserNames(clientWriter);
 				}
 				System.out.println("Client connected to the server!");
 				clientConnectionThread.start();
+			} else {
+				sendUsernameDeclineResponse(clientWriter);
 			}
 		}
 	}
 
 	private void sendUsernameConfirmationResponse(PrintWriter clientWriter) {
 		clientWriter.println(VALID_USERNAME_RESPONSE);
+		clientWriter.flush();
+	}
+
+	private void sendUsernameDeclineResponse(PrintWriter clientWriter) {
+		clientWriter.println("penis");
 		clientWriter.flush();
 	}
 
@@ -125,6 +115,11 @@ public class Server implements AutoCloseable {
 		}
 		if (serverSocket != null) {
 			closeQuietly(serverSocket);
+		}
+		try {
+			Files.delete(USERS_FILE_LOCATION);
+		} catch (IOException e) {
+			e.printStackTrace();
 		}
 	}
 

@@ -9,11 +9,15 @@ import java.text.MessageFormat;
 import java.util.List;
 import java.util.function.Supplier;
 
+import com.google.gson.annotations.Expose;
+
 public class ClientConnectionThread extends Thread {
-	private transient Socket clientSocket;
-	private transient volatile boolean isServerRunning;
-	private transient Supplier<List<PrintWriter>> clientsSupplier;
+	private Socket clientSocket;
+	private volatile boolean isServerRunning;
+	private Supplier<List<PrintWriter>> clientsSupplier;
+	@Expose
 	private String clientUserName;
+	@Expose
 	private String clientPassword;
 
 	public ClientConnectionThread(Socket socket, String clientUserName, String clientPassword,
